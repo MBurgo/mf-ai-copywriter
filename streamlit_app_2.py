@@ -39,7 +39,7 @@ Incorporate proven copywriting principles when appropriate:
 
 # ====== Sidebar Trait Intensity Controls ======
 with st.sidebar.form(key="trait_form"):
-    st.header("🎚️ Trait Intensity")
+    st.header("🎚️ Linguistic Trait Intensity")
 
     trait_scores = {
         "Urgency": st.slider("Urgency & Time Sensitivity", 1, 10, 8),
