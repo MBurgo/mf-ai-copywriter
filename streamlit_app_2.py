@@ -7,8 +7,8 @@ from docx import Document
 client = OpenAI(api_key=st.secrets.openai_api_key)
 
 # ====== Page setup ======
-st.set_page_config(page_title="🚀 Motley Fool AI Copywriter")
-st.title("🚀 Motley Fool AI Copywriter")
+st.set_page_config(page_title="✍️ Motley Fool AI Copywriter")
+st.title("✍️ Motley Fool AI Copywriter")
 
 st.markdown("""
 <style>
@@ -61,8 +61,8 @@ length_choice = st.selectbox("Select desired copy length:", [
     "📏 Short (100-200 words)",
     "📐 Medium (200-500 words)",
     "📖 Long (500-1500 words)",
-    "📚 Extra Long (1500-5000 words)",
-    "Scrolling Monster (5000+ words)",
+    "📚 Extra Long (1500-3000 words)",
+    "📜 Scrolling Monster (3000+ words)",
 ])
 
 st.subheader("Campaign Brief")
