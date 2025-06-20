@@ -65,8 +65,8 @@ tab_gen, tab_adapt = st.tabs(["✍️ Generate Copy", "🌐 Adapt Copy"])
 with tab_gen:
 
     # ---------- Trait sliders in sidebar ----------
-    with st.sidebar.form("trait_form"):
-        st.header("🎚️ Linguistic Trait Intensity")
+with st.sidebar.expander("🎚️ Linguistic Trait Intensity", expanded=True):
+    with st.form("trait_form"):
         trait_scores = {
             "Urgency":             st.slider("Urgency & Time Sensitivity", 1, 10, 8),
             "Data_Richness":       st.slider("Data-Richness & Numerical Emphasis", 1, 10, 7),
