@@ -20,7 +20,7 @@ st.markdown(
 )
 
 # ─────────────────────────────────────────────────────────────
-#  Small helpers
+#  Session-state helper
 # ─────────────────────────────────────────────────────────────
 def _init(**defaults):
     for k, v in defaults.items():
@@ -47,37 +47,37 @@ SYSTEM_PROMPT_BASE = (
 )
 
 COUNTRY_PROMPTS = {
-    "Australia":       "Use Australian English, prices in AUD, and reference the ASX where relevant.",
-    "United Kingdom":  "Use British English, prices in GBP, and reference the FTSE where relevant.",
-    "Canada":          "Use Canadian English, prices in CAD, and reference the TSX where relevant.",
-    "Germany":         "Use English, prices in EUR, and reference the DAX where relevant.",
-    "United States":   "Use American English, prices in USD, and reference the S&P 500 where relevant.",
+    "Australia":      "Use Australian English, prices in AUD, and reference the ASX where relevant.",
+    "United Kingdom": "Use British English, prices in GBP, and reference the FTSE where relevant.",
+    "Canada":         "Use Canadian English, prices in CAD, and reference the TSX where relevant.",
+    "Germany":        "Use English, prices in EUR, and reference the DAX where relevant.",
+    "United States":  "Use American English, prices in USD, and reference the S&P 500 where relevant.",
 }
 
 # ─────────────────────────────────────────────────────────────
-#  TAB LAYOUT
+#  Tab layout
 # ─────────────────────────────────────────────────────────────
 tab_gen, tab_adapt = st.tabs(["✍️ Generate Copy", "🌐 Adapt Copy"])
 
 # ============================================================
-#  TAB 1 — Generate Copy  (existing logic, unchanged)
+#  TAB 1 — Generate Copy
 # ============================================================
 with tab_gen:
 
     # ---------- Trait sliders in sidebar ----------
-with st.sidebar.expander("🎚️ Linguistic Trait Intensity", expanded=True):
-    with st.form("trait_form"):
-        trait_scores = {
-            "Urgency":             st.slider("Urgency & Time Sensitivity", 1, 10, 8),
-            "Data_Richness":       st.slider("Data-Richness & Numerical Emphasis", 1, 10, 7),
-            "Social_Proof":        st.slider("Social Proof & Testimonials", 1, 10, 6),
-            "Comparative_Framing": st.slider("Comparative Framing", 1, 10, 6),
-            "Imagery":             st.slider("Imagery & Metaphors", 1, 10, 7),
-            "Conversational_Tone": st.slider("Conversational Tone", 1, 10, 8),
-            "FOMO":                st.slider("FOMO (Fear of Missing Out)", 1, 10, 7),
-            "Repetition":          st.slider("Repetition for Emphasis", 1, 10, 5),
-        }
-        trait_submit = st.form_submit_button("🔄 Update Copy with Adjusted Traits")
+    with st.sidebar.expander("🎚️ Linguistic Trait Intensity", expanded=True):
+        with st.form("trait_form"):
+            trait_scores = {
+                "Urgency":             st.slider("Urgency & Time Sensitivity", 1, 10, 8),
+                "Data_Richness":       st.slider("Data-Richness & Numerical Emphasis", 1, 10, 7),
+                "Social_Proof":        st.slider("Social Proof & Testimonials", 1, 10, 6),
+                "Comparative_Framing": st.slider("Comparative Framing", 1, 10, 6),
+                "Imagery":             st.slider("Imagery & Metaphors", 1, 10, 7),
+                "Conversational_Tone": st.slider("Conversational Tone", 1, 10, 8),
+                "FOMO":                st.slider("FOMO (Fear of Missing Out)", 1, 10, 7),
+                "Repetition":          st.slider("Repetition for Emphasis", 1, 10, 5),
+            }
+            trait_submit = st.form_submit_button("🔄 Update Copy with Adjusted Traits")
 
     # ---------- Generation inputs ----------
     country       = st.selectbox("🌐 Target Country", list(COUNTRY_PROMPTS))
@@ -109,7 +109,7 @@ with st.sidebar.expander("🎚️ Linguistic Trait Intensity", expanded=True):
     st.subheader("📰 Quotes or Recent News (optional)")
     quotes_news = st.text_area("Add quotes, stats, or timely news to reference")
 
-    # ---------- Build trait guide ----------
+    # ---------- Trait guide helper ----------
     def trait_guide(traits: dict) -> str:
         examples = {
             "Urgency":             "This isn't a drill — once midnight hits, your chance to secure these savings is gone forever.",
@@ -126,30 +126,30 @@ with st.sidebar.expander("🎚️ Linguistic Trait Intensity", expanded=True):
             for i, (name, score) in enumerate(traits.items())
         )
 
-    EMAIL_STRUCTURE = (
+    # ---------- Copy structure ----------
+    EMAIL_STRUCT = (
         "- Subject Line\n"
         "- Greeting\n"
         "- Body (benefits, urgency, proofs)\n"
         "- Clear call-to-action\n"
         "- Sign-off"
     )
-    SALES_STRUCTURE = (
+    SALES_STRUCT = (
         "- Attention-grabbing Headline\n"
         "- Engaging Introduction\n"
         "- Bullets: key benefits/features\n"
         "- Detailed Body explaining offer & urgency\n"
         "- Strong call-to-action"
     )
-    copy_structure = EMAIL_STRUCTURE if copy_type.startswith("📧") else SALES_STRUCTURE
+    copy_structure = EMAIL_STRUCT if copy_type.startswith("📧") else SALES_STRUCT
 
+    # ---------- Build prompt ----------
     def build_prompt(traits, brief, original_copy=None):
-        edit_block = ""
-        if original_copy:
-            edit_block = (
-                f"\n\nYou are editing the EXISTING copy to reflect UPDATED trait intensities and new inputs."
-                f"\n\n--- ORIGINAL COPY START ---\n{original_copy}\n--- ORIGINAL COPY END ---"
-            )
-
+        edit_block = (
+            f"\n\nYou are editing the EXISTING copy to reflect UPDATED trait intensities and new inputs."
+            f"\n\n--- ORIGINAL COPY START ---\n{original_copy}\n--- ORIGINAL COPY END ---"
+            if original_copy else ""
+        )
         return (
             f"Produce a persuasive, engaging {copy_type.lower()} for the {brief['country']} market.\n"
             f"{COUNTRY_PROMPTS[brief['country']]}\n\n"
@@ -182,6 +182,7 @@ with st.sidebar.expander("🎚️ Linguistic Trait Intensity", expanded=True):
             "quotes_news": quotes_news,
         }
 
+    # ---------- Generate & update ----------
     def do_generate():
         st.session_state.brief = aggregate_brief()
         st.session_state.last_traits = trait_scores.copy()
@@ -223,6 +224,7 @@ with st.sidebar.expander("🎚️ Linguistic Trait Intensity", expanded=True):
         st.session_state.generated_copy = resp.choices[0].message.content.strip()
         st.success("✅ Copy updated!")
 
+    # ---------- Buttons & display ----------
     if st.button("✨ Generate Marketing Copy"):
         do_generate()
     if trait_submit:
