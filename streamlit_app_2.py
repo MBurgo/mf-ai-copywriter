@@ -11,7 +11,10 @@ client = OpenAI(api_key=st.secrets.openai_api_key)
 # ─────────────────────────────────────────────────────────────
 #  Page config
 # ─────────────────────────────────────────────────────────────
-st.set_page_config(page_title="✍️ Motley Fool AI Copywriter")
+st.set_page_config(
+    page_title="✍️ Motley Fool AI Copywriter",
+    initial_sidebar_state="expanded"   # ← ensures sidebar is open
+)
 st.title("✍️ Motley Fool AI Copywriter")
 
 st.markdown(
