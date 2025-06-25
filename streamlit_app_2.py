@@ -53,6 +53,7 @@ COUNTRY_PROMPTS = {
     "Australia":      "Use Australian English, prices in AUD, and reference the ASX where relevant.",
     "United Kingdom": "Use British English, prices in GBP, and reference the FTSE where relevant.",
     "Canada":         "Use Canadian English, prices in CAD, and reference the TSX where relevant.",
+    "United States":  "Use American English, prices in USD, and reference the S&P 500 where relevant.",
 }
 
 # ─────────────────────────────────────────────────────────────
