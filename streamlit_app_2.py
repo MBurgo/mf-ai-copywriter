@@ -469,20 +469,21 @@ with tab_gen:
         with st.spinner("Polishing copy…"):
             draft = self_qa(data["copy"].strip(), copy_type)
 
-        # ---- Optional critique ------------------------------
-        if show_critique:
-            crit = client.chat.completions.create(
-                model=OPENAI_MODEL,
-                messages=[
-                    {"role":"system","content":"Give concise, constructive feedback."},
-                    {"role":"user","content":f"""
-In 3 bullets – one strength, one weakness, one improvement.
---- COPY ---
-{draft}
---- END ---
-"""}]
-            ).choices[0].message.content
-            st.info(crit)
+            # ---- Optional critique (moved *inside* same spinner) ----
+            if show_critique:
+                crit = client.chat.completions.create(
+                    model=OPENAI_MODEL,
+                    messages=[
+                        {"role": "system", "content": "Give concise, constructive feedback."},
+                        {"role": "user", "content": f"""
+        In 3 bullets – one strength, one weakness, one improvement.
+        --- COPY ---
+        {draft}
+        --- END ---
+        """}]
+                ).choices[0].message.content
+                st.info(crit)
+        # ------------------------------------------------------------
 
         return draft
 
