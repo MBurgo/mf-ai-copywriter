@@ -1,9 +1,11 @@
-# ✍️ Motley Fool AI Copywriter — Pro Edition v4.1
+# ✍️ Motley Fool AI Copywriter — Pro Edition v4.3
 # ----------------------------------------------------------
-# • Built‑in “Internal Plan” stage
+# • Internal Plan (chain‑of‑thought) stage
 # • JSON {plan, copy} separation
-# • Dynamic word‑count control tied to length dropdown
-# • Auto‑expand via self‑QA when draft is too short
+# • Dynamic word‑count enforcement tied to dropdown
+# • Dual spinners for clearer progress feedback
+# • Unique keys for every button (resolves duplicate‑ID error)
+# • Few‑shot “Reference Winner” exemplars for email & sales pages
 # ----------------------------------------------------------
 
 import time, json
@@ -83,6 +85,7 @@ You are The Motley Fool’s senior direct‑response copy chief.
 • Draw from Ogilvy clarity, Sugarman narrative, Halbert urgency, Cialdini persuasion.
 • Use **Markdown headings** (##, ###) and standard `-` bullets for lists.
 • Never promise guaranteed returns; keep compliance in mind.
+• The reference examples are for inspiration only — do NOT reuse phrases verbatim.
 • Return ONLY the requested copy – no meta commentary, no code fences.
 
 {country_rules}
@@ -173,6 +176,48 @@ Scroll down and you’ll see why the Silver Pass could be your portfolio’s inf
 **Yes! Secure My Pass Now**
 """.strip()
 
+# --- Reference winners (few‑shot exemplars) -----------------
+SALES_WINNER = """
+### Reference Winner (style guidance only — do **not** copy)
+
+Washington won’t talk about it. Wall Street hasn’t caught on.  
+But behind closed doors, America is quietly preparing to launch a **$3 trillion AI supremacy plan** buried in a little‑known presidential directive: **The Manhattan Project 2.0**.  
+When the **July 22** deadline hits, billions in funding could flood into a hidden network of overlooked companies quietly powering the most important technology of our time.
+
+That’s why The Motley Fool launched a months‑long investigation — including a 600‑mile research trip to a secret North‑American facility the Department of Defense calls “vital to national security.” For the first time, we’re sharing the full results *and* giving investors a chance to tap the AI shadow network that could become a national priority as soon as July 22.
+
+Accept this special offer before it expires and you’ll get instant access to:  
+➔ **Special Report – AI Shadow Network: 10 Hidden Stocks Behind the $3 Trillion AI Arms Race**  
+➔ **Special Report – The Xi Directive: 5 Under‑the‑Radar Stocks Driving the World’s Second AI Superpower**  
+➔ **Exclusive CEO Interview** with the leader of a tiny rare‑earth micro‑cap (the smallest stock in our new report)  
+➔ **And much more** — nearly *double* the monthly stock picks plus access to Tom Gardner’s market‑beating AI Playbook portfolio.  
+
+---
+
+**You MUST act before Thursday at midnight** to lock in today’s Early‑Bird deal. Because so much value is delivered upfront, cash refunds aren’t possible. Instead, you’re protected by our **Ironclad 30‑Day Satisfaction Guarantee** — transfer your membership credit any time in the first month if we haven’t exceeded expectations.
+""".strip()
+
+EMAIL_WINNER = """
+### Reference Winner (style guidance only — do **not** copy)
+
+**Subject‑Line:** *REVEALED: 10 Hidden “AI Shadow Network” Stocks Behind America’s $3T Arms Race*  
+**Pre‑header:** Get the details before the Manhattan Project 2.0 goes live on July 22.
+
+Hi ##firstname##,
+
+**July 22 could mark a seismic shift** in the global arms race for AI supremacy — and almost no one is paying attention.  
+While the media fixates on NVIDIA, Microsoft and OpenAI, we’ve been digging deeper… even sending analysts **600 miles from Motley Fool HQ** to inspect a secretive North‑American facility Business Insider calls *“the lifeblood of AI.”*
+
+What we uncovered could change everything about how you invest in AI.  
+Today we’re lifting the curtain on an **“AI Arms Race Package”** that reveals:  
+
+- *AI Shadow Network*: 10 hidden stocks poised to surge as federal funding floods the supply chain  
+- *The Xi Directive*: 5 Chinese companies critical to Beijing’s AI ambitions  
+- An exclusive interview with the CEO of a microcap nearly **12 000× smaller than NVIDIA** — yet deemed “vital to national security”
+
+The Early‑Bird offer expires **tomorrow at midnight**. With Manhattan Project 2.0 looming, there’s no time to waste…
+""".strip()
+
 # --- Structural skeletons -----------------------------------
 EMAIL_STRUCT = """
 ### Subject Line
@@ -195,6 +240,14 @@ SALES_STRUCT = """
 # ────────────────────────────────────────────────────────────
 def build_prompt(copy_type, copy_struct, traits, brief, length_choice, original=None):
     exemplar = EMAIL_MICRO if copy_type.startswith("📧") else SALES_MICRO
+
+    # --- attach few‑shot winners ---------------------------------
+    if copy_type == "📝 Sales Page":
+        exemplar += "\n\n" + SALES_WINNER
+    else:  # email types
+        exemplar += "\n\n" + EMAIL_WINNER
+    # -------------------------------------------------------------
+
     hard = []
     if traits["Urgency"] >= 8:
         hard.append("- Include a deadline phrase in headline/subject **and** CTA.")
@@ -205,12 +258,10 @@ def build_prompt(copy_type, copy_struct, traits, brief, length_choice, original=
     hard_block = "#### Hard Requirements\n" + "\n".join(hard) if hard else ""
     edit_block = f"\n\n### ORIGINAL COPY\n{original}\n### END ORIGINAL" if original else ""
 
-    # ------ length block ------------------------------------
     min_len, max_len = LENGTH_RULES[length_choice]
-    if max_len:
-        length_block = f"#### Length Requirement\nWrite between **{min_len} and {max_len} words**."
-    else:
-        length_block = f"#### Length Requirement\nWrite **at least {min_len} words**."
+    length_block = (f"#### Length Requirement\nWrite between **{min_len} and {max_len} words**."
+                    if max_len else
+                    f"#### Length Requirement\nWrite **at least {min_len} words**.")
 
     return f"""
 {trait_guide(traits)}
@@ -266,14 +317,13 @@ def self_qa(draft, copy_type):
     if not AUTO_QA:
         return draft
 
-    # ----- dynamic length enforcement -----------------------
     min_len, _ = LENGTH_RULES.get(st.session_state.length_choice, (0, None))
     if min_len and len(draft.split()) < min_len:
         crit = f"- Draft is only {len(draft.split())} words (< {min_len}). Please expand."
     else:
         crit = ""
 
-    if not crit:  # run normal checks only when length passes
+    if not crit:
         crit = client.chat.completions.create(
             model=OPENAI_MODEL,
             messages=[{"role":"system","content":"You are an obsessive editorial QA bot."},
@@ -306,7 +356,7 @@ Apply fixes, output full revised copy ONLY.
     return patched
 
 # ────────────────────────────────────────────────────────────
-# 7B.  Variant generator helper (unchanged)
+# 7B.  Variant generator helper
 # ────────────────────────────────────────────────────────────
 def generate_variants(base_copy: str, n: int = 5):
     prompt = f"""
@@ -404,6 +454,7 @@ with tab_gen:
              "content": user_instr + "\n\n" + prompt_core}
         ]
 
+        # ---- Spinner #1: draft generation -------------------
         with st.spinner("Crafting copy…"):
             raw_json = run_chat(msgs, expect_json=True)
 
@@ -413,8 +464,12 @@ with tab_gen:
             data = {"plan": "", "copy": raw_json}
 
         st.session_state.internal_plan = data["plan"].strip()
-        draft = self_qa(data["copy"].strip(), copy_type)
 
+        # ---- Spinner #2: QA & polish ------------------------
+        with st.spinner("Polishing copy…"):
+            draft = self_qa(data["copy"].strip(), copy_type)
+
+        # ---- Optional critique ------------------------------
         if show_critique:
             crit = client.chat.completions.create(
                 model=OPENAI_MODEL,
@@ -432,24 +487,26 @@ In 3 bullets – one strength, one weakness, one improvement.
         return draft
 
     # --- Buttons
-    if st.button("✨ Generate Copy"):
+    if st.button("✨ Generate Copy", key="gen_generate"):
         st.session_state.generated_copy = generate()
 
     if update_traits and st.session_state.generated_copy:
         st.session_state.generated_copy = generate(st.session_state.generated_copy)
 
-    # --- Display
+    # --- Display & post‑gen tools
     if st.session_state.generated_copy:
         st.subheader("📝 Current Copy")
         st.markdown(st.session_state.generated_copy)
 
-        # with st.expander("🔍 Internal Plan"):
-        #     st.markdown(st.session_state.internal_plan)
+        # ---------- NEW: optional chain‑of‑thought ----------------
+        with st.expander("🔍 Show Internal Plan (AI outline)"):
+            st.markdown(st.session_state.internal_plan or "_No plan captured_")
+        # ----------------------------------------------------------
 
         st.code(st.session_state.generated_copy, language="markdown")
 
         # variant grid
-        if st.button("🎯 Generate 5 Alt Headlines & CTAs"):
+        if st.button("🎯 Generate 5 Alt Headlines & CTAs", key="gen_variants"):
             with st.spinner("Brainstorming variants…"):
                 variants = generate_variants(st.session_state.generated_copy)
 
@@ -472,14 +529,15 @@ In 3 bullets – one strength, one weakness, one improvement.
             doc = Document(); doc.add_paragraph(st.session_state.generated_copy)
             buf = BytesIO(); doc.save(buf); buf.seek(0)
             st.download_button("📥 Download DOCX", buf, "mf_copy.docx",
-                               mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
-        if col2.button("🗑️ Clear"):
+                               mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                               key="gen_download")
+        if col2.button("🗑️ Clear", key="gen_clear"):
             st.session_state.generated_copy = ""
             st.session_state.internal_plan = ""
             st.experimental_rerun()
 
 # ────────────────────────────────────────────────────────────
-# 9.  UI – Adapt tab (unchanged)
+# 9.  UI – Adapt tab
 # ────────────────────────────────────────────────────────────
 with tab_adapt:
     st.markdown("### Paste the original copy and select a **target country**.")
@@ -490,7 +548,7 @@ with tab_adapt:
     target_c = colB.selectbox("Target Country",
                               [c for c in COUNTRY_RULES if c != source_c])
 
-    if st.button("🌐 Adapt Copy") and original_text.strip():
+    if st.button("🌐 Adapt Copy", key="adapt_button") and original_text.strip():
         msgs = [
             {"role":"system",
              "content": SYSTEM_PROMPT.format(country_rules=COUNTRY_RULES[target_c])},
@@ -511,11 +569,12 @@ with tab_adapt:
         st.subheader("🌐 Adapted Copy")
         st.markdown(st.session_state.adapted_copy)
 
-        a1, a2 = st.columns(2)
-        if a1.button("💾 Save DOCX", key="adapt_save"):
+        b1, b2 = st.columns(2)
+        if b1.button("💾 Save DOCX", key="adapt_save"):
             doc = Document(); doc.add_paragraph(st.session_state.adapted_copy)
             buf = BytesIO(); doc.save(buf); buf.seek(0)
             st.download_button("📥 Download DOCX", buf, "mf_adapted.docx",
-                               mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
-        if a2.button("🗑️ Clear Adapted"):
+                               mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                               key="adapt_download")
+        if b2.button("🗑️ Clear Adapted", key="adapt_clear"):
             st.session_state.adapted_copy = ""
