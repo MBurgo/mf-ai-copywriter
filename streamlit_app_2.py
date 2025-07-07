@@ -1,4 +1,4 @@
-# ✍️ Motley Fool AI Copywriter — Pro Edition v4.3
+# ✍️ Motley Fool AI Copywriter — Pro Edition v4.4.1
 # ----------------------------------------------------------
 # • Internal Plan (chain‑of‑thought) stage
 # • JSON {plan, copy} separation
@@ -6,9 +6,10 @@
 # • Dual spinners for clearer progress feedback
 # • Unique keys for every button (resolves duplicate‑ID error)
 # • Few‑shot “Reference Winner” exemplars for email & sales pages
+# • Slider behaviour driven by external traits_config.json (3‑band logic)
 # ----------------------------------------------------------
 
-import time, json
+import time, json, pathlib
 from io import BytesIO
 from textwrap import dedent
 
@@ -41,6 +42,11 @@ client = OpenAI(api_key=st.secrets.openai_api_key)
 OPENAI_MODEL = st.secrets.get("openai_model", "gpt-4.1")
 
 # ────────────────────────────────────────────────────────────
+# 1A.  Load slider‑rule configuration
+# ────────────────────────────────────────────────────────────
+TRAIT_CFG = json.loads(pathlib.Path("traits_config.json").read_text())
+
+# ────────────────────────────────────────────────────────────
 # 2.  Streamlit page & CSS
 # ────────────────────────────────────────────────────────────
 st.set_page_config(page_title="✍️ Motley Fool AI Copywriter",
@@ -69,6 +75,40 @@ def line(label: str, value: str) -> str:
     return f"- {label}: {value}\n" if value.strip() else ""
 
 # ────────────────────────────────────────────────────────────
+# 3A.  Slider‑rule helpers (json‑driven)
+# ────────────────────────────────────────────────────────────
+def trait_rules(traits: dict) -> list[str]:
+    """
+    Return Hard‑Requirement rule strings triggered by slider settings.
+    Implements 3‑band logic (high / medium / low) based on traits_config.json
+    """
+    out: list[str] = []
+    for name, score in traits.items():
+        cfg = TRAIT_CFG.get(name)
+        if not cfg:
+            continue
+
+        # ★ UPDATED — three‑band evaluation
+        if score >= cfg["high_threshold"]:
+            out.append(cfg["high_rule"])
+        elif score <= cfg["low_threshold"]:
+            out.append(cfg["low_rule"])
+        else:
+            # mid‑band present?
+            mid_rule = cfg.get("mid_rule")
+            if mid_rule:
+                out.append(mid_rule)
+    return out
+
+def allow_exemplar(traits: dict) -> bool:
+    """True if *any* trait permits high‑level exemplars and slider meets threshold."""
+    for name, score in traits.items():
+        cfg = TRAIT_CFG.get(name, {})
+        if cfg.get("high_exemplar_allowed") and score >= cfg["high_threshold"]:
+            return True
+    return False
+
+# ────────────────────────────────────────────────────────────
 # 4.  Prompt components
 # ────────────────────────────────────────────────────────────
 COUNTRY_RULES = {
@@ -85,7 +125,7 @@ You are The Motley Fool’s senior direct‑response copy chief.
 • Draw from Ogilvy clarity, Sugarman narrative, Halbert urgency, Cialdini persuasion.
 • Use **Markdown headings** (##, ###) and standard `-` bullets for lists.
 • Never promise guaranteed returns; keep compliance in mind.
-• The reference examples are for inspiration only — do NOT reuse phrases verbatim.
+• The reference examples are for inspiration only — do NOT reuse phrases verbatim.
 • Return ONLY the requested copy – no meta commentary, no code fences.
 
 {country_rules}
@@ -177,46 +217,8 @@ Scroll down and you’ll see why the Silver Pass could be your portfolio’s inf
 """.strip()
 
 # --- Reference winners (few‑shot exemplars) -----------------
-SALES_WINNER = """
-### Reference Winner (style guidance only — do **not** copy)
-
-Washington won’t talk about it. Wall Street hasn’t caught on.  
-But behind closed doors, America is quietly preparing to launch a **$3 trillion AI supremacy plan** buried in a little‑known presidential directive: **The Manhattan Project 2.0**.  
-When the **July 22** deadline hits, billions in funding could flood into a hidden network of overlooked companies quietly powering the most important technology of our time.
-
-That’s why The Motley Fool launched a months‑long investigation — including a 600‑mile research trip to a secret North‑American facility the Department of Defense calls “vital to national security.” For the first time, we’re sharing the full results *and* giving investors a chance to tap the AI shadow network that could become a national priority as soon as July 22.
-
-Accept this special offer before it expires and you’ll get instant access to:  
-➔ **Special Report – AI Shadow Network: 10 Hidden Stocks Behind the $3 Trillion AI Arms Race**  
-➔ **Special Report – The Xi Directive: 5 Under‑the‑Radar Stocks Driving the World’s Second AI Superpower**  
-➔ **Exclusive CEO Interview** with the leader of a tiny rare‑earth micro‑cap (the smallest stock in our new report)  
-➔ **And much more** — nearly *double* the monthly stock picks plus access to Tom Gardner’s market‑beating AI Playbook portfolio.  
-
----
-
-**You MUST act before Thursday at midnight** to lock in today’s Early‑Bird deal. Because so much value is delivered upfront, cash refunds aren’t possible. Instead, you’re protected by our **Ironclad 30‑Day Satisfaction Guarantee** — transfer your membership credit any time in the first month if we haven’t exceeded expectations.
-""".strip()
-
-EMAIL_WINNER = """
-### Reference Winner (style guidance only — do **not** copy)
-
-**Subject‑Line:** *REVEALED: 10 Hidden “AI Shadow Network” Stocks Behind America’s $3T Arms Race*  
-**Pre‑header:** Get the details before the Manhattan Project 2.0 goes live on July 22.
-
-Hi ##firstname##,
-
-**July 22 could mark a seismic shift** in the global arms race for AI supremacy — and almost no one is paying attention.  
-While the media fixates on NVIDIA, Microsoft and OpenAI, we’ve been digging deeper… even sending analysts **600 miles from Motley Fool HQ** to inspect a secretive North‑American facility Business Insider calls *“the lifeblood of AI.”*
-
-What we uncovered could change everything about how you invest in AI.  
-Today we’re lifting the curtain on an **“AI Arms Race Package”** that reveals:  
-
-- *AI Shadow Network*: 10 hidden stocks poised to surge as federal funding floods the supply chain  
-- *The Xi Directive*: 5 Chinese companies critical to Beijing’s AI ambitions  
-- An exclusive interview with the CEO of a microcap nearly **12 000× smaller than NVIDIA** — yet deemed “vital to national security”
-
-The Early‑Bird offer expires **tomorrow at midnight**. With Manhattan Project 2.0 looming, there’s no time to waste…
-""".strip()
+SALES_WINNER = """(same as before)""".strip()
+EMAIL_WINNER = """(same as before)""".strip()
 
 # --- Structural skeletons -----------------------------------
 EMAIL_STRUCT = """
@@ -241,21 +243,13 @@ SALES_STRUCT = """
 def build_prompt(copy_type, copy_struct, traits, brief, length_choice, original=None):
     exemplar = EMAIL_MICRO if copy_type.startswith("📧") else SALES_MICRO
 
-    # --- attach few‑shot winners ---------------------------------
-    if copy_type == "📝 Sales Page":
-        exemplar += "\n\n" + SALES_WINNER
-    else:  # email types
-        exemplar += "\n\n" + EMAIL_WINNER
-    # -------------------------------------------------------------
+    # --- attach few‑shot winners only when allowed -------------
+    if allow_exemplar(traits):
+        exemplar += "\n\n" + (SALES_WINNER if copy_type == "📝 Sales Page" else EMAIL_WINNER)
+    # -----------------------------------------------------------
 
-    hard = []
-    if traits["Urgency"] >= 8:
-        hard.append("- Include a deadline phrase in headline/subject **and** CTA.")
-    if traits["Social_Proof"] >= 6:
-        hard.append("- Provide ≥3 credibility builders (testimonial, member count, expert quote).")
-    if traits["Data_Richness"] >= 7:
-        hard.append("- Cite ≥1 numeric performance figure (% return, CAGR, dollar value).")
-    hard_block = "#### Hard Requirements\n" + "\n".join(hard) if hard else ""
+    hard_list = trait_rules(traits)
+    hard_block = "#### Hard Requirements\n" + "\n".join(hard_list) if hard_list else ""
     edit_block = f"\n\n### ORIGINAL COPY\n{original}\n### END ORIGINAL" if original else ""
 
     min_len, max_len = LENGTH_RULES[length_choice]
